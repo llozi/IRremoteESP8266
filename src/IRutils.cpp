@@ -204,6 +204,7 @@ bool hasACState(const decode_type_t protocol) {
     case MITSUBISHI136:
     case MITSUBISHI112:
     case MITSUBISHI_AC:
+    case MITSUBISHI_AC_DBL:
     case MITSUBISHI_HEAVY_88:
     case MITSUBISHI_HEAVY_152:
     case MWM:
@@ -384,6 +385,12 @@ String resultToHexidecimal(const decode_results * const result) {
       if (result->state[i] < 0x10) output += '0';  // Zero pad
       output += uint64ToString(result->state[i], 16);
     }
+#else
+    // TODO: this is for debugging only, remove when done
+    for (uint16_t i = 0; result->bits > i * 8; i++) {
+      if (result->state[i] < 0x10) output += '0';  // Zero pad
+      output += uint64ToString(result->state[i], 16);
+    }    
 #endif  // DECODE_AC
   } else {
     output += uint64ToString(result->value, 16);

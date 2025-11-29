@@ -959,6 +959,13 @@
 #define SEND_BLUESTARHEAVY           _IR_ENABLE_DEFAULT_
 #endif  // SEND_BLUESTARHEAVY
 
+#ifndef DECODE_MITSUBISHI_AC_DBL
+#define DECODE_MITSUBISHI_AC_DBL     _IR_ENABLE_DEFAULT_
+#endif  // DECODE_MITSUBISHI_AC_DBL
+#ifndef SEND_MITSUBISHI_AC_DBL
+#define SEND_MITSUBISHI_AC_DBL       _IR_ENABLE_DEFAULT_
+#endif  // SEND_MITSUBISHI_AC_DBL
+
 #if (DECODE_ARGO || DECODE_DAIKIN || DECODE_FUJITSU_AC || DECODE_GREE || \
      DECODE_KELVINATOR || DECODE_MITSUBISHI_AC || DECODE_TOSHIBA_AC || \
      DECODE_TROTEC || DECODE_HAIER_AC || DECODE_HITACHI_AC || \
@@ -978,6 +985,7 @@
      DECODE_DAIKIN200 || DECODE_HAIER_AC160 || DECODE_TCL96AC || \
      DECODE_BOSCH144 || DECODE_SANYO_AC152 || DECODE_DAIKIN312 || \
      DECODE_CARRIER_AC84 || DECODE_YORK || DECODE_BLUESTARHEAVY || \
+     DECODE_MITSUBISHI_AC_DBL || \
      false)
   // Add any DECODE to the above if it uses result->state (see kStateSizeMax)
   // you might also want to add the protocol to hasACState function
@@ -1145,8 +1153,9 @@ enum decode_type_t {
   CARRIER_AC84,  // 125
   YORK,
   BLUESTARHEAVY,
+  MITSUBISHI_AC_DBL,
   // Add new entries before this one, and update it to point to the last entry.
-  kLastDecodeType = BLUESTARHEAVY,
+  kLastDecodeType = MITSUBISHI_AC_DBL,
 };
 
 // Message lengths & required repeat values
@@ -1330,6 +1339,10 @@ const uint16_t kMitsubishi136MinRepeat = kNoRepeat;
 const uint16_t kMitsubishi112StateLength = 14;
 const uint16_t kMitsubishi112Bits = kMitsubishi112StateLength * 8;
 const uint16_t kMitsubishi112MinRepeat = kNoRepeat;
+
+const uint16_t kMitsubishiACDblStateLength = 23;
+const uint16_t kMitsubishiACDblBits = kMitsubishiACDblStateLength * 8;
+
 const uint16_t kMitsubishiHeavy88StateLength = 11;
 const uint16_t kMitsubishiHeavy88Bits = kMitsubishiHeavy88StateLength * 8;
 const uint16_t kMitsubishiHeavy88MinRepeat = kNoRepeat;
@@ -1503,7 +1516,7 @@ const uint16_t kYorkStateLength = 17;
 #define WHYNTER_BITS                  kWhynterBits
 
 // Turn on Debugging information by uncommenting the following line.
-// #define DEBUG 1
+//#define DEBUG 1
 
 #ifdef DEBUG
 #ifdef UNIT_TEST

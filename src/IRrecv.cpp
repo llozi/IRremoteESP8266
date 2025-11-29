@@ -1189,6 +1189,10 @@ bool IRrecv::decode(decode_results *results, irparams_t *save,
     DPRINTLN("Attempting BluestarHeavy decode");
     if (decodeBluestarHeavy(results, offset, kBluestarHeavyBits)) return true;
 #endif  // DECODE_BLUESTARHEAVY
+#if DECODE_MITSUBISHI_AC_DBL
+    DPRINTLN("Attempting Mitsubishi AC w double signature decode");
+    if (decodeMitsubishiACDbl(results, offset)) return true;
+#endif
   // Typically new protocols are added above this line.
   }
 #if DECODE_HASH

@@ -83,6 +83,16 @@ const uint32_t kMitsubishi112Gap = kDefaultMessageGap;
 // Total tolerance percentage to use for matching the header mark.
 const uint8_t  kMitsubishi112HdrMarkTolerance = 5;
 
+// Mitsubishi A/C (144 bit preceeded by 40 bit signature
+const uint16_t kMitsubishiAcDblHdrMark = 3529;
+const uint16_t kMitsubishiAcDblBitMark = 489;
+const uint16_t kMitsubishiAcDblHdrSpace = 1683;
+const uint16_t kMitsubishiAcDblOneSpace = 1234;
+const uint16_t kMitsubishiAcDblZeroSpace = 381;
+const uint16_t kMitsubishiAcDblSpaceGap = 8992;
+const uint16_t kMitsubishiAcDblOverhead = 7;
+const bool kMitsubishiAcDblMsbFirst = false;
+const uint16_t kMitsubishiAcDblFreq = 38;
 
 using irutils::addBoolToString;
 using irutils::addFanToString;
@@ -1725,3 +1735,208 @@ String IRMitsubishi112::toString(void) const {
   result += addBoolToString(getQuiet(), kQuietStr);
   return result;
 }
+
+unsigned char reverse(unsigned char b) {
+   b = (b & 0b11110000) >> 4 | (b & 0b00001111) << 4;
+   b = (b & 0b11001100) >> 2 | (b & 0b00110011) << 2;
+   b = (b & 0b10101010) >> 1 | (b & 0b01010101) << 1;
+   return b;
+}
+
+#if SEND_MITSUBISHI_AC_DBL
+/// Send a Mitsubishi 144-bit A/C formatted message preceeded by an additional
+/// signature sequence. (MITSUBISHI_AC_DBL)
+/// Status: ?.
+/// @param[in] data The message to be sent.
+/// @param[in] nbytes The number of bytes of message to be sent.
+/// @param[in] repeat The number of times the command is to be repeated.
+void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbytes,
+                                 const uint16_t repeat) {
+  //static const uint8_t signaturedata[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
+  //uint16_t signnbytes = sizeof(signaturedata) / sizeof(signaturedata[0]);
+
+ for (uint16_t r = 0; r <= repeat; r++) {
+    uint16_t pos = 0;
+    // Data Section #1
+    //   bits = 40; bytes = 5;
+    //   *(data + pos) = {0x23, 0xCB, 0x26, 0x01, 0x00};
+    sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
+                data + pos, 5,  // Bytes
+                kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
+                kNoRepeat, kDutyDefault);
+    pos += 5;  // Adjust by how many bytes of data we sent
+
+    // Data Section #2
+    //   bits = 144; bytes = 18;
+    sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+                kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
+                data + pos, 18,  // Bytes
+                kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
+                kNoRepeat, kDutyDefault);
+  } 
+}
+#endif  // SEND_MITSUBISHI_AC_DBL
+
+void printHexByte(byte bytetoprint) {
+  if (bytetoprint < 0x10) {
+    Serial.print(F("0"));
+  }
+  Serial.print(bytetoprint, HEX);
+}
+
+#if DECODE_MITSUBISHI_AC_DBL
+/// Decode the supplied Mitsubish 144-bit A/C message which is preceeded by an
+/// additional signature sequence (looks like 184 bit message).
+/// Status: ?
+/// @param[in,out] results Ptr to the data to decode & where to store the result
+/// @param[in] offset The starting index to use when attempting to decode the
+///   raw data. Typically/Defaults to kStartOffset.
+/// @param[in] nbits The number of data bits to expect.
+/// @param[in] strict Flag indicating if we should perform strict matching.
+/// @see https://www.analysir.com/blog/2015/01/06/reverse-engineering-mitsubishi-ac-infrared-protocol/
+bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
+                                   const uint16_t nbits, const bool strict) {
+  Serial.println("DEBUG decodeMitsuACDbl");
+  Serial.print("DEBUG MitsuACDbl: offset: ");
+  Serial.print(offset);
+  Serial.print(", nbits: ");
+  Serial.print(nbits);
+  Serial.print(", strict: ");
+  Serial.print(strict);
+  Serial.print(", MSBfirst: ");
+  Serial.println(kMitsubishiAcDblMsbFirst);
+  //Serial.println("DEBUG MitsuACDbl result bits: ");
+  //Serial.println(resultToHexidecimal(results));
+
+  if (results->rawlen < 2 * nbits + kMitsubishiAcDblOverhead - offset) {
+    DPRINTLN("DEBUG MitsuACDbl: message too short!");
+    Serial.println("DEBUG MitsuACDbl: message too short!");
+    return false;  // Too short a message to match.
+  }
+  if (strict && nbits != kMitsubishiACDblBits) {
+    Serial.println("DEBUG MitsuACDbl: wrong bit count!");
+    return false;
+  }
+
+  uint16_t pos = 0;
+  uint16_t used = 0;
+
+  // Data Section #1
+  // e.g.
+  //   bits = 40; bytes = 5;
+  //   *(results->state + pos) = {0xC4, 0xD3, 0x64, 0x80, 0x00};
+  used = matchGeneric(results->rawbuf + offset, results->state + pos,
+                      results->rawlen - offset, 40,
+                      kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+                      kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+                      kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+                      kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
+                      false);
+  if (used == 0) {
+    Serial.println("DEBUG MitsuACDbl: no data!");
+    return false;  // We failed to find any data.
+  }
+  Serial.println("DEBUG MitsuACDbl: generic match data sect. 1!");
+
+  for (uint16_t i = 0; i < 5; i++) {
+    results->state[i] = reverse(results->state[i]);
+  }
+
+  static const uint8_t signature[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
+  // reversed instead??
+  //static const uint8_t signature[5] = {0x00, 0xCB, 0x26, 0x01, 0x23};
+  //bit order reversed or why it's actually this??
+  //static const uint8_t signature[5] = {0xC4, 0xD3, 0x64, 0x80, 0x00};
+
+  // Compliance
+  if (strict) {
+    // Data signature check.
+    if (std::memcmp(results->state, signature, 5) != 0) {
+      Serial.println("DEBUG MitsuACDbl: data sect. 1 wrong signature!");
+      Serial.print("DEBUG MitsuACDbl sign. bytes: ");
+      for (uint16_t i = 0; i < 5; i++) {
+        printHexByte(results->state[i]);
+        if (i < 4) {
+          Serial.print(" ");
+        }
+      }
+      Serial.println();
+      //return false;
+    }
+    Serial.println("DEBUG MitsuACDbl: data sect. #1 signature match!");
+  }
+
+  offset += used;  // Adjust for how much of the message we read.
+  pos += 5;  // Adjust by how many bytes of data we read
+
+  // Data Section #2
+  // e.g.
+  //   bits = 144; bytes = 18;
+  //   *(results->state + pos) = {0xC4, 0xD3, 0x64, 0x80, 0x00, 0x04, 0x10, 0x10, 0x0A, 0x06, 0x0E, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0xE6};
+  used = matchGeneric(results->rawbuf + offset, results->state + pos,
+                      results->rawlen - offset, 144,
+                      kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+                      kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+                      kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+                      kMitsubishiAcDblBitMark, kDefaultMessageGap,
+                      false);
+  if (used == 0) {
+    Serial.println("DEBUG MitsuACDbl: no data in sect #2!");
+    return false;  // We failed to find any data.
+  }
+
+  Serial.println("DEBUG MitsuACDbl: generic match data sect. 2!");
+
+  for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
+    results->state[i] = reverse(results->state[i]);
+  } 
+
+  Serial.print("DEBUG MitsuACDbl data bytes: ");
+  for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
+    printHexByte(results->state[i]);
+    if (i < kMitsubishiACDblStateLength - 1) {
+      Serial.print(" ");
+    } 
+  }
+  Serial.println();
+
+  if (strict) {
+    // Data signature check for the second section.
+    if (std::memcmp(results->state + 5, signature, 5) != 0) {
+      Serial.println("DEBUG MitsuACDbl: data sect. 2 wrong signature!");
+      Serial.print("DEBUG MitsuACDbl Sign bytes sect. #2: ");
+      //return false;
+    }
+    Serial.println("DEBUG MitsuACDbl: data sect. #2 signature match!");
+  }
+  
+  offset += used;  // Adjust for how much of the message we read.
+  pos += 18;  // Adjust by how many bytes of data we read
+
+  if (strict) {
+    // Checksum verification.
+    unsigned char checksum = sumBytes(results->state + 5, kMitsubishiACDblStateLength - 5 - 1);
+    if (checksum != results->state[kMitsubishiACDblStateLength - 1]) {
+      Serial.print("DEBUG MitsuACDbl: checksum fail! Calculated: ");
+      printHexByte(checksum);
+      Serial.print(", Received: ");
+      printHexByte(results->state[kMitsubishiACDblStateLength - 1]);
+      Serial.println();
+      return false;
+    } else {
+      Serial.println("DEBUG MitsuACDbl: checksum OK!");
+    }
+  }
+
+  // Success
+  results->decode_type = decode_type_t::MITSUBISHI_AC_DBL;
+  results->bits = nbits;
+  return true;
+}
+#endif  // DECODE_MITSUBISHI_AC_DBL
+

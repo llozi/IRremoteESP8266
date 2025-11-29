@@ -49,7 +49,8 @@
 #ifdef ARDUINO_ESP32C3_DEV
 const uint16_t kRecvPin = 10;  // 14 on a ESP32-C3 causes a boot loop.
 #else  // ARDUINO_ESP32C3_DEV
-const uint16_t kRecvPin = 14;
+//const uint16_t kRecvPin = 14;
+const uint16_t kRecvPin = 5;     // auvisio S06 IR Controller
 #endif  // ARDUINO_ESP32C3_DEV
 
 // The Serial connection baud rate.

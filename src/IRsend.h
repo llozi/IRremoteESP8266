@@ -288,6 +288,15 @@ class IRsend {
                    const uint8_t *dataptr, const uint16_t nbytes,
                    const uint16_t frequency, const bool MSBfirst,
                    const uint16_t repeat, const uint8_t dutycycle);
+  void sendGeneric(const uint16_t headermark, const uint32_t headerspace,
+                   const uint16_t onemark, const uint32_t onespace,
+                   const uint16_t zeromark, const uint32_t zerospace,
+                   const uint16_t footermark, const uint32_t gap,
+                   const uint8_t *signptr, const uint16_t signnbytes,
+                   const uint8_t *dataptr, const uint16_t nbytes,
+                   const uint16_t frequency, const bool MSBfirst,
+                   const uint16_t repeat, const uint8_t dutycycle);
+
   static uint16_t minRepeats(const decode_type_t protocol);
   static uint16_t defaultBits(const decode_type_t protocol);
   bool send(const decode_type_t type, const uint64_t data,
@@ -899,6 +908,11 @@ class IRsend {
                        const uint16_t nbytes = kBluestarHeavyStateLength,
                        const uint16_t repeat = kNoRepeat);
 #endif  // SEND_BLUESTARHEAVY
+#if SEND_MITSUBISHI_AC_DBL
+  void sendMitsubishiACDbl(const unsigned char data[],
+                        const uint16_t nbytes = kMitsubishiACStateLength,
+                        const uint16_t repeat = kMitsubishiACMinRepeat);
+#endif
 
  protected:
 #ifdef UNIT_TEST

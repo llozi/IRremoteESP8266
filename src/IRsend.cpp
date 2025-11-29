@@ -434,6 +434,70 @@ void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
   }
 }
 
+/// Generic method for sending simple protocol messages.
+/// @param[in] headermark Nr. of usecs for the led to be pulsed for the header
+///   mark. A value of 0 means no header mark.
+/// @param[in] headerspace Nr. of usecs for the led to be off after the header
+///   mark. A value of 0 means no header space.
+/// @param[in] onemark Nr. of usecs for the led to be pulsed for a '1' bit.
+/// @param[in] onespace Nr. of usecs for the led to be fully off for a '1' bit.
+/// @param[in] zeromark Nr. of usecs for the led to be pulsed for a '0' bit.
+/// @param[in] zerospace Nr. of usecs for the led to be fully off for a '0' bit.
+/// @param[in] footermark Nr. of usecs for the led to be pulsed for the footer
+///   mark. A value of 0 means no footer mark.
+/// @param[in] gap Nr. of usecs for the led to be off after the footer mark.
+///   This is effectively the gap between messages.
+///   A value of 0 means no gap space.
+/// @param[in] signptr Pointer to the data the signature consists of.
+/// @param[in] signnbytes Nr. of bytes of signature to be sent.
+/// @param[in] dataptr Pointer to the data to be transmitted.
+/// @param[in] nbytes Nr. of bytes of data to be sent.
+/// @param[in] frequency The frequency we want to modulate at. (Hz/kHz)
+/// @param[in] MSBfirst Flag for bit transmission order.
+///   Defaults to MSB->LSB order.
+/// @param[in] repeat Nr. of extra times the message will be sent.
+///   e.g. 0 = 1 message sent, 1 = 1 initial + 1 repeat = 2 messages
+/// @param[in] dutycycle Percentage duty cycle of the LED.
+///   e.g. 25 = 25% = 1/4 on, 3/4 off.
+///   If you are not sure, try 50 percent.
+/// @note Assumes a frequency < 1000 means kHz otherwise it is in Hz.
+///   Most common value is 38000 or 38, for 38kHz.
+void IRsend::sendGeneric(const uint16_t headermark, const uint32_t headerspace,
+                         const uint16_t onemark, const uint32_t onespace,
+                         const uint16_t zeromark, const uint32_t zerospace,
+                         const uint16_t footermark, const uint32_t gap,
+                         const uint8_t *signptr, const uint16_t signnbytes,
+                         const uint8_t *dataptr, const uint16_t nbytes,
+                         const uint16_t frequency, const bool MSBfirst,
+                         const uint16_t repeat, const uint8_t dutycycle) {
+  // Setup
+  enableIROut(frequency, dutycycle);
+  // We always send a message, even for repeat=0, hence '<= repeat'.
+  for (uint16_t r = 0; r <= repeat; r++) {
+    // Header
+    if (headermark) mark(headermark);
+    if (headerspace) space(headerspace);
+
+    // Signature sequence
+    for (uint16_t i = 0; i < signnbytes; i++)
+      sendData(onemark, onespace, zeromark, zerospace, *(signptr + i), 8,
+               MSBfirst);
+
+    // leave a gap between signature sequence and actual message
+    if (footermark) mark(footermark);
+    space(gap);
+
+    // Data
+    for (uint16_t i = 0; i < nbytes; i++)
+      sendData(onemark, onespace, zeromark, zerospace, *(dataptr + i), 8,
+               MSBfirst);
+
+    // Footer
+    if (footermark) mark(footermark);
+    space(gap);
+  }
+}
+
 /// Generic method for sending Manchester code data.
 /// Will send leading or trailing 0's if the nbits is larger than the number
 /// of bits in data.
@@ -757,6 +821,8 @@ uint16_t IRsend::defaultBits(const decode_type_t protocol) {
       return kMirageBits;
     case MITSUBISHI_AC:
       return kMitsubishiACBits;
+    case MITSUBISHI_AC_DBL:
+      return kMitsubishiACDblBits;
     case MITSUBISHI136:
       return kMitsubishi136Bits;
     case MITSUBISHI112:
@@ -1443,6 +1509,11 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
       sendBluestarHeavy(state, nbytes);
       break;
 #endif  // SEND_BLUESTARHEAVY
+#if SEND_MITSUBISHI_AC_DBL
+    case MITSUBISHI_AC_DBL:
+      sendMitsubishiACDbl(state, nbytes);
+      break;
+#endif  // SEND_MITSUBISHI_AC
     default:
       return false;
   }

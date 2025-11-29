@@ -889,6 +889,12 @@ class IRrecv {
                   const uint16_t nbits = kBluestarHeavyBits,
                   const bool strict = true);
 #endif  // DECODE_BLUESTARHEAVY
+#if DECODE_MITSUBISHI_AC_DBL
+  bool decodeMitsubishiACDbl(decode_results *results,
+                          uint16_t offset = kStartOffset,
+                          const uint16_t nbits = kMitsubishiACDblBits,
+                          const bool strict = true);
+#endif  // DECODE_MITSUBISHI_AC_DBL
 };
 
 #endif  // IRRECV_H_
