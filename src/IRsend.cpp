@@ -1511,9 +1511,10 @@ bool IRsend::send(const decode_type_t type, const uint8_t *state,
 #endif  // SEND_BLUESTARHEAVY
 #if SEND_MITSUBISHI_AC_DBL
     case MITSUBISHI_AC_DBL:
-      sendMitsubishiACDbl(state, nbytes);
+      //sendMitsubishiACDbl(state, nbytes);
+      sendMitsubishiAC(state, nbytes);
       break;
-#endif  // SEND_MITSUBISHI_AC
+#endif  // SEND_MITSUBISHI_AC_DBL
     default:
       return false;
   }

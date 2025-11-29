@@ -397,14 +397,22 @@ void electra(IRElectraAc *ac,
 #if SEND_MIRAGE
   void mirage(IRMirageAc *ac, const stdAc::state_t state);
 #endif  // SEND_MIRAGE
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
   void mitsubishi(IRMitsubishiAC *ac,
                   const bool on, const stdAc::opmode_t mode,
                   const float degrees,
                   const stdAc::fanspeed_t fan, const stdAc::swingv_t swingv,
                   const stdAc::swingh_t swingh,
                   const bool quiet, const int16_t clock = -1);
-#endif  // SEND_MITSUBISHI_AC
+#endif  // (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL) 
+#if SEND_MITSUBISHI_AC_DBL
+  void mitsubishiDbl(IRMitsubishiAC *ac,
+                  const bool on, const stdAc::opmode_t mode,
+                  const float degrees, 
+                  const stdAc::fanspeed_t fan, const stdAc::swingv_t swingv,
+                  const stdAc::swingh_t swingh,
+                  const bool quiet, const int16_t clock = -1);
+#endif  // SEND_MITSUBISHI_AC_DBL
 #if SEND_MITSUBISHI112
   void mitsubishi112(IRMitsubishi112 *ac,
                      const bool on, const stdAc::opmode_t mode,

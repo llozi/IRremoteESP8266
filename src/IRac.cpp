@@ -302,6 +302,9 @@ bool IRac::isProtocolSupported(const decode_type_t protocol) {
 #if SEND_MITSUBISHI_AC
     case decode_type_t::MITSUBISHI_AC:
 #endif
+#if SEND_MITSUBISHI_AC_DBL
+    case decode_type_t::MITSUBISHI_AC_DBL:
+#endif
 #if SEND_MITSUBISHI112
     case decode_type_t::MITSUBISHI112:
 #endif
@@ -1919,7 +1922,7 @@ void IRac::mirage(IRMirageAc *ac, const stdAc::state_t state) {
 }
 #endif  // SEND_MIRAGE
 
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
 /// Send a Mitsubishi A/C message with the supplied settings.
 /// @param[in, out] ac A Ptr to an IRMitsubishiAC object to use.
 /// @param[in] on The power setting.
@@ -1958,7 +1961,29 @@ void IRac::mitsubishi(IRMitsubishiAC *ac,
   if (clock >= 0) ac->setClock(clock / 10);  // Clock is in 10 min increments.
   ac->send();
 }
-#endif  // SEND_MITSUBISHI_AC
+#endif  // (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
+
+#if SEND_MITSUBISHI_AC_DBL
+/// Send a Mitsubishi A/C message with the supplied settings.
+/// @param[in, out] ac A Ptr to an IRMitsubishiAC object to use.
+/// @param[in] on The power setting.
+/// @param[in] mode The operation mode setting.
+/// @param[in] degrees The temperature setting in degrees.
+/// @param[in] fan The speed setting for the fan.
+/// @param[in] swingv The vertical swing setting.
+/// @param[in] swingh The horizontal swing setting.
+/// @param[in] quiet Run the device in quiet/silent mode.
+/// @param[in] clock The time in Nr. of mins since midnight. < 0 is ignore.
+/// @note Clock can only be set in 10 minute increments. i.e. % 10.
+void IRac::mitsubishiDbl(IRMitsubishiAC *ac,
+                      const bool on, const stdAc::opmode_t mode,
+                      const float degrees,
+                      const stdAc::fanspeed_t fan, const stdAc::swingv_t swingv,
+                      const stdAc::swingh_t swingh,
+                      const bool quiet, const int16_t clock) {
+  IRac::mitsubishi(ac, on, mode, degrees, fan, swingv, swingh, quiet, clock);
+}
+#endif  // SEND_MITSUBISHI_AC_DBL
 
 #if SEND_MITSUBISHI112
 /// Send a Mitsubishi 112-bit A/C message with the supplied settings.
@@ -3428,6 +3453,15 @@ bool IRac::sendAc(const stdAc::state_t desired, const stdAc::state_t *prev) {
       break;
     }
 #endif  // SEND_MITSUBISHI_AC
+#if SEND_MITSUBISHI_AC_DBL
+    case MITSUBISHI_AC_DBL:
+    {
+      IRMitsubishiAC ac(_pin, _inverted, _modulation);
+      mitsubishiDbl(&ac, send.power, send.mode, degC, send.fanspeed, send.swingv,
+                 send.swingh, send.quiet, send.clock);
+      break; 
+    }
+#endif  // SEND_MITSUBISHI_AC_DBL
 #if SEND_MITSUBISHI112
     case MITSUBISHI112:
     {
@@ -4349,6 +4383,13 @@ String resultAcToString(const decode_results * const result) {
       return ac.toString();
     }
 #endif  // DECODE_MITSUBISHI_AC
+#if DECODE_MITSUBISHI_AC_DBL
+    case decode_type_t::MITSUBISHI_AC_DBL: {
+      IRMitsubishiAC ac(kGpioUnused);
+      ac.setRaw(result->state);
+      return ac.toString();
+    }   
+#endif  // DECODE_MITSUBISHI_AC_DBL
 #if DECODE_MITSUBISHI112
     case decode_type_t::MITSUBISHI112: {
       IRMitsubishi112 ac(kGpioUnused);

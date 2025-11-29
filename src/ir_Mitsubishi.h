@@ -271,14 +271,14 @@ class IRMitsubishiAC {
                           const bool use_modulation = true);
   void stateReset(void);
   static bool validChecksum(const uint8_t* data);
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
   void send(const uint16_t repeat = kMitsubishiACMinRepeat);
   /// Run the calibration to calculate uSec timing offsets for this platform.
   /// @return The uSec timing offset needed per modulation of the IR Led.
   /// @note This will produce a 65ms IR signal pulse at 38kHz.
   ///   Only ever needs to be run once per object instantiation, if at all.
   int8_t calibrate(void) { return _irsend.calibrate(); }
-#endif  // SEND_MITSUBISHI_AC
+#endif  // (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
   void begin(void);
   void on(void);
   void off(void);
@@ -332,7 +332,7 @@ class IRMitsubishiAC {
   String toString(void) const;
 #ifndef UNIT_TEST
 
- private:
+ protected:
   IRsend _irsend;  ///< Instance of the IR send class
 #else  // UNIT_TEST
   /// @cond IGNORE
@@ -452,6 +452,38 @@ class IRMitsubishi112 {
 #endif  // UNIT_TEST
   Mitsubishi112Protocol _;
   void checksum(void);
+};
+
+/// Class for handling the variant of Mitsubishi A/C IR remote control protocol
+/// using 144-bit message which is preceeded by an additional signature sequence
+/// (looks like 184 bit message).
+/// This format is used by a Mitsubishi Electric MSZ-FT25VGK with a SH20D remote.
+class IRMitsubishiACDbl : public IRMitsubishiAC {
+ public:
+  explicit IRMitsubishiACDbl(const uint16_t pin, const bool inverted = false,
+                    const bool use_modulation = true);
+
+  /*
+  uint8_t* getRaw(void);
+  void setRaw(const uint8_t* data);
+  */
+
+#if SEND_MITSUBISHI_AC_DBL
+  void send(const uint16_t repeat = kMitsubishiACMinRepeat);
+  /// Run the calibration to calculate uSec timing offsets for this platform.
+  /// @return The uSec timing offset needed per modulation of the IR Led.
+  /// @note This will produce a 65ms IR signal pulse at 38kHz.
+  ///   Only ever needs to be run once per object instantiation, if at all.
+  //int8_t calibrate(void) { return _irsend.calibrate(); }
+#endif  // SEND_MITSUBISHI_AC_DBL
+
+  /*
+ private:
+  Mitsubishi144Protocol _;
+
+  void checksum(void);      
+  static uint8_t calculateChecksum(const uint8_t* data);
+  */
 };
 
 #endif  // IR_MITSUBISHI_H_

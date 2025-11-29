@@ -93,6 +93,11 @@ const uint16_t kMitsubishiAcDblSpaceGap = 8992;
 const uint16_t kMitsubishiAcDblOverhead = 7;
 const bool kMitsubishiAcDblMsbFirst = false;
 const uint16_t kMitsubishiAcDblFreq = 38;
+const uint8_t signaturedata[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
+// reversed instead??
+//static const uint8_t signaturedata[5] = {0x00, 0xCB, 0x26, 0x01, 0x23};
+//bit order reversed or why it's actually this??
+//static const uint8_t signaturedata[5] = {0xC4, 0xD3, 0x64, 0x80, 0x00};
 
 using irutils::addBoolToString;
 using irutils::addFanToString;
@@ -237,7 +242,7 @@ bool IRrecv::decodeMitsubishi2(decode_results *results, uint16_t offset,
 }
 #endif  // DECODE_MITSUBISHI2
 
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
 /// Send a Mitsubishi 144-bit A/C formatted message. (MITSUBISHI_AC)
 /// Status: STABLE / Working.
 /// @param[in] data The message to be sent.
@@ -253,7 +258,7 @@ void IRsend::sendMitsubishiAC(const unsigned char data[], const uint16_t nbytes,
               kMitsubishiAcZeroSpace, kMitsubishiAcRptMark,
               kMitsubishiAcRptSpace, data, nbytes, 38, false, repeat, 50);
 }
-#endif  // SEND_MITSUBISHI_AC
+#endif  // SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL
 
 #if DECODE_MITSUBISHI_AC
 /// Decode the supplied Mitsubish 144-bit A/C message.
@@ -296,8 +301,7 @@ bool IRrecv::decodeMitsubishiAC(decode_results *results, uint16_t offset,
       // Compliance
       if (strict) {
         // Data signature check.
-        static const uint8_t signature[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
-        if (std::memcmp(results->state, signature, 5) != 0) return false;
+        if (std::memcmp(results->state, signaturedata, 5) != 0) return false;
         // Checksum verification.
         if (!IRMitsubishiAC::validChecksum(results->state)) return false;
       }
@@ -339,13 +343,13 @@ void IRMitsubishiAC::stateReset(void) {
 /// Set up hardware to be able to send a message.
 void IRMitsubishiAC::begin(void) { _irsend.begin(); }
 
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
 /// Send the current internal state as an IR message.
 /// @param[in] repeat Nr. of times the message will be repeated.
 void IRMitsubishiAC::send(const uint16_t repeat) {
   _irsend.sendMitsubishiAC(getRaw(), kMitsubishiACStateLength, repeat);
 }
-#endif  // SEND_MITSUBISHI_AC
+#endif  // SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL
 
 /// Get a PTR to the internal state/code for this protocol.
 /// @return PTR to a code for this protocol based on the current internal state.
@@ -837,7 +841,15 @@ String IRMitsubishiAC::toString(void) const {
   result += addFanToString(getFan(), kMitsubishiAcFanRealMax,
                            kMitsubishiAcFanRealMax - 3,
                            kMitsubishiAcFanAuto, kMitsubishiAcFanQuiet,
+                           kMitsubishiAcFanRealMax - 2,
+                           kMitsubishiAcFanRealMax,
+                           kMitsubishiAcFanRealMax - 1);
+  /*
+  result += addFanToString(getFan(), kMitsubishiAcFanRealMax,
+                           kMitsubishiAcFanRealMax - 3,
+                           kMitsubishiAcFanAuto, kMitsubishiAcFanQuiet,
                            kMitsubishiAcFanRealMax - 2);
+  */
   result += addSwingVToString(_.Vane, kMitsubishiAcVaneAuto,
                               kMitsubishiAcVaneHighest, kMitsubishiAcVaneHigh,
                               kMitsubishiAcVaneAuto,  // Upper Middle unused.
@@ -1752,8 +1764,7 @@ unsigned char reverse(unsigned char b) {
 /// @param[in] repeat The number of times the command is to be repeated.
 void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbytes,
                                  const uint16_t repeat) {
-  //static const uint8_t signaturedata[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
-  //uint16_t signnbytes = sizeof(signaturedata) / sizeof(signaturedata[0]);
+  //uint16_t nsignbytes = sizeof(signaturedata) / sizeof(signaturedata[0]);
 
  for (uint16_t r = 0; r <= repeat; r++) {
     uint16_t pos = 0;
@@ -1764,10 +1775,9 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
-                data + pos, 5,  // Bytes
+                signaturedata, 5,  // Bytes
                 kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
                 kNoRepeat, kDutyDefault);
-    pos += 5;  // Adjust by how many bytes of data we sent
 
     // Data Section #2
     //   bits = 144; bytes = 18;
@@ -1775,7 +1785,7 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
                 kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
-                data + pos, 18,  // Bytes
+                data + pos, kMitsubishiACStateLength,  // Bytes
                 kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
                 kNoRepeat, kDutyDefault);
   } 
@@ -1847,16 +1857,10 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
     results->state[i] = reverse(results->state[i]);
   }
 
-  static const uint8_t signature[5] = {0x23, 0xCB, 0x26, 0x01, 0x00};
-  // reversed instead??
-  //static const uint8_t signature[5] = {0x00, 0xCB, 0x26, 0x01, 0x23};
-  //bit order reversed or why it's actually this??
-  //static const uint8_t signature[5] = {0xC4, 0xD3, 0x64, 0x80, 0x00};
-
   // Compliance
   if (strict) {
     // Data signature check.
-    if (std::memcmp(results->state, signature, 5) != 0) {
+    if (std::memcmp(results->state, signaturedata, 5) != 0) {
       Serial.println("DEBUG MitsuACDbl: data sect. 1 wrong signature!");
       Serial.print("DEBUG MitsuACDbl sign. bytes: ");
       for (uint16_t i = 0; i < 5; i++) {
@@ -1907,7 +1911,7 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
 
   if (strict) {
     // Data signature check for the second section.
-    if (std::memcmp(results->state + 5, signature, 5) != 0) {
+    if (std::memcmp(results->state + 5, signaturedata, 5) != 0) {
       Serial.println("DEBUG MitsuACDbl: data sect. 2 wrong signature!");
       Serial.print("DEBUG MitsuACDbl Sign bytes sect. #2: ");
       //return false;
@@ -1929,14 +1933,75 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
       Serial.println();
       return false;
     } else {
-      Serial.println("DEBUG MitsuACDbl: checksum OK!");
+      Serial.print("DEBUG MitsuACDbl: checksum OK! (");
+      printHexByte(checksum);
+      Serial.println(")");
     }
   }
 
   // Success
+  // Get rid of the leading 5 bytes signature and transform to a
+  // Mitsubishi144 message
+  for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
+    results->state[i -5] = results->state[i];
+  }
+  results->bits = kMitsubishiACBits;
   results->decode_type = decode_type_t::MITSUBISHI_AC_DBL;
-  results->bits = nbits;
   return true;
 }
 #endif  // DECODE_MITSUBISHI_AC_DBL
+
+// Code to emulate the variant of Mitsubishi A/C IR remote control unit
+// using 144-bit message which is preceeded by an additional signature sequence
+// (looks like 184 bit message).
+// This format is used by a Mitsubishi Electric MSZ-FT25VGK with a SH20D remote.
+
+/// Class constructor
+/// @param[in] pin GPIO to be used when sending.
+/// @param[in] inverted Is the output signal to be inverted?
+/// @param[in] use_modulation Is frequency modulation to be used?
+/// @warning Consider this very alpha code. Seems to work, but not validated.
+IRMitsubishiACDbl::IRMitsubishiACDbl(const uint16_t pin, const bool inverted,
+                                     const bool use_modulation)
+      : IRMitsubishiAC(pin, inverted, use_modulation) { }
+
+/*
+/// Reset the state of the remote to a known good state/sequence.
+void IRMitsubishiACDbl::stateReset(void) {
+  // The state of the IR remote in IR code form.
+  static const uint8_t kReset[kMitsubishiACStateLength] = {
+      0x23, 0xCB, 0x26, 0x01, 0x00, 0x20, 0x08, 0x06, 0x30, 0x45, 0x67};
+  setRaw(kReset);
+}
+
+/// Get a PTR to the internal state/code for this protocol.
+/// @return PTR to a code for this protocol based on the current internal state.
+uint8_t *IRMitsubishiACDbl::getRaw(void) {
+  checksum();
+  return _.raw;
+}
+*/
+
+#if SEND_MITSUBISHI_AC_DBL
+/// Send the current internal state as an IR message.
+/// @param[in] repeat Nr. of times the message will be repeated.
+void IRMitsubishiACDbl::send(const uint16_t repeat) {
+  _irsend.sendMitsubishiACDbl(getRaw(), kMitsubishiACDblStateLength, repeat);
+}
+
+/*
+/// Calculate and set the checksum values for the internal state.
+void IRMitsubishiACDbl::checksum(void) {
+  _.Sum = calculateChecksum(_.raw);
+}
+
+/// Calculate the checksum for a given state.
+/// @param[in] data The value to calc the checksum of.
+/// @return The calculated checksum value.
+uint8_t IRMitsubishiACDbl::calculateChecksum(const uint8_t *data) {
+  return sumBytes(data, kMitsubishiACStateLength - 1);
+}
+*/
+    
+#endif  // SEND_MITSUBISHI_AC_DBL
 

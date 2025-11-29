@@ -466,7 +466,7 @@ class IRsend {
   void sendMitsubishi2(uint64_t data, uint16_t nbits = kMitsubishiBits,
                        uint16_t repeat = kMitsubishiMinRepeat);
 #endif
-#if SEND_MITSUBISHI_AC
+#if (SEND_MITSUBISHI_AC || SEND_MITSUBISHI_AC_DBL)
   void sendMitsubishiAC(const unsigned char data[],
                         const uint16_t nbytes = kMitsubishiACStateLength,
                         const uint16_t repeat = kMitsubishiACMinRepeat);
