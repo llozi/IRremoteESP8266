@@ -463,13 +463,8 @@ class IRMitsubishiACDbl : public IRMitsubishiAC {
   explicit IRMitsubishiACDbl(const uint16_t pin, const bool inverted = false,
                     const bool use_modulation = true);
 
-  /*
-  uint8_t* getRaw(void);
-  void setRaw(const uint8_t* data);
-  */
-
 #if SEND_MITSUBISHI_AC_DBL
-  void send(const uint16_t repeat = kMitsubishiACMinRepeat);
+  void send(const uint16_t repeat = kNoRepeat);
   /// Run the calibration to calculate uSec timing offsets for this platform.
   /// @return The uSec timing offset needed per modulation of the IR Led.
   /// @note This will produce a 65ms IR signal pulse at 38kHz.
@@ -477,13 +472,6 @@ class IRMitsubishiACDbl : public IRMitsubishiAC {
   //int8_t calibrate(void) { return _irsend.calibrate(); }
 #endif  // SEND_MITSUBISHI_AC_DBL
 
-  /*
- private:
-  Mitsubishi144Protocol _;
-
-  void checksum(void);      
-  static uint8_t calculateChecksum(const uint8_t* data);
-  */
 };
 
 #endif  // IR_MITSUBISHI_H_

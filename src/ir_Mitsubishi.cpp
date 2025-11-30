@@ -1771,31 +1771,7 @@ void printHexByte(byte bytetoprint) {
 /// @param[in] repeat The number of times the command is to be repeated (not used).
 void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbytes,
                                  const uint16_t repeat) {
-  //uint16_t nsignbytes = sizeof(signaturedata) / sizeof(signaturedata[0]);
 
-  // need a copy of data to send as bits have to be reversed in every byte 
-//  uint8_t msbdata[kMitsubishiACStateLength];
-
-  // Signature Section
-  //   bits = 40; bytes = 5;
-  //   *(sdata) = {0x23, 0xCB, 0x26, 0x01, 0x00};
-/*
-  // copy the signature bytes and reverse the bits in every byte
-  for (uint16_t i = 0; i < 5; i++) {
-    //msbdata[i] = reverse(signaturedata[i]);
-    msbdata[i] = signaturedata[i];
-  }
-*/
-/*
-  Serial.print("Sending signature sect.: ");
-  for (uint16_t i = 0; i < 5; i++) {
-    printHexByte(msbdata[i]);
-    if (i < 4) {
-      Serial.print(" ");
-    }
-  }
-  Serial.println();
-*/
   sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
@@ -1806,23 +1782,6 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
 
   // Data Section
   //   bits = 144; bytes = 18;
-/*
-  // reverse all bytes
-  for (uint16_t i = 0; i < kMitsubishiACStateLength; i++) {
-    //msbdata[i] = reverse(data[i]);
-    msbdata[i] = data[i];
-  }
-*/
-/*
-  Serial.print("Sending data sect.: ");
-  for (uint16_t i = 0; i < kMitsubishiACStateLength; i++) {
-    printHexByte(msbdata[i]);
-    if (i < kMitsubishiACStateLength - 1) {
-      Serial.print(" ");
-    } 
-  } 
-  Serial.println();
-*/
   sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
@@ -1845,25 +1804,13 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
 /// @see https://www.analysir.com/blog/2015/01/06/reverse-engineering-mitsubishi-ac-infrared-protocol/
 bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
                                    const uint16_t nbits, const bool strict) {
-  Serial.println("DEBUG decodeMitsuACDbl");
-  Serial.print("DEBUG MitsuACDbl: offset: ");
-  Serial.print(offset);
-  Serial.print(", nbits: ");
-  Serial.print(nbits);
-  Serial.print(", strict: ");
-  Serial.print(strict);
-  Serial.print(", MSBfirst: ");
-  Serial.println(kMitsubishiAcDblMsbFirst);
-  //Serial.println("DEBUG MitsuACDbl result bits: ");
-  //Serial.println(resultToHexidecimal(results));
 
   if (results->rawlen < 2 * nbits + kMitsubishiAcDblOverhead - offset) {
     DPRINTLN("DEBUG MitsuACDbl: message too short!");
-    Serial.println("DEBUG MitsuACDbl: message too short!");
     return false;  // Too short a message to match.
   }
   if (strict && nbits != kMitsubishiACDblBits) {
-    Serial.println("DEBUG MitsuACDbl: wrong bit count!");
+    DPRINTLN("DEBUG MitsuACDbl: wrong bit count!");
     return false;
   }
 
@@ -1882,10 +1829,10 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
                       false);
   if (used == 0) {
-    Serial.println("DEBUG MitsuACDbl: no data!");
+    DPRINTLN("DEBUG MitsuACDbl: no data!");
     return false;  // We failed to find any data.
   }
-  Serial.println("DEBUG MitsuACDbl: generic match data sect. 1!");
+  DPRINTLN("DEBUG MitsuACDbl: generic match data sect. 1!");
 
   for (uint16_t i = 0; i < 5; i++) {
     results->state[i] = reverse(results->state[i]);
@@ -1895,18 +1842,10 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
   if (strict) {
     // Data signature check.
     if (std::memcmp(results->state, signaturedata, 5) != 0) {
-      Serial.println("DEBUG MitsuACDbl: data sect. 1 wrong signature!");
-      Serial.print("DEBUG MitsuACDbl sign. bytes: ");
-      for (uint16_t i = 0; i < 5; i++) {
-        printHexByte(results->state[i]);
-        if (i < 4) {
-          Serial.print(" ");
-        }
-      }
-      Serial.println();
-      //return false;
+      DPRINTLN("DEBUG MitsuACDbl: data sect. 1 wrong signature!");
+      return false;
     }
-    Serial.println("DEBUG MitsuACDbl: data sect. #1 signature match!");
+    DPRINTLN("DEBUG MitsuACDbl: data sect. #1 signature match!");
   }
 
   offset += used;  // Adjust for how much of the message we read.
@@ -1924,33 +1863,23 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
                       kMitsubishiAcDblBitMark, kDefaultMessageGap,
                       false);
   if (used == 0) {
-    Serial.println("DEBUG MitsuACDbl: no data in sect #2!");
+    DPRINTLN("DEBUG MitsuACDbl: no data in sect #2!");
     return false;  // We failed to find any data.
   }
 
-  Serial.println("DEBUG MitsuACDbl: generic match data sect. 2!");
+  DPRINTLN("DEBUG MitsuACDbl: generic match data sect. 2!");
 
   for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
     results->state[i] = reverse(results->state[i]);
   } 
 
-  Serial.print("DEBUG MitsuACDbl data bytes: ");
-  for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
-    printHexByte(results->state[i]);
-    if (i < kMitsubishiACStateLength - 1) {
-      Serial.print(" ");
-    } 
-  }
-  Serial.println();
-
   if (strict) {
     // Data signature check for the second section.
     if (std::memcmp(results->state + 5, signaturedata, 5) != 0) {
-      Serial.println("DEBUG MitsuACDbl: data sect. 2 wrong signature!");
-      Serial.print("DEBUG MitsuACDbl Sign bytes sect. #2: ");
-      //return false;
+      DPRINTLN("DEBUG MitsuACDbl: data sect. 2 wrong signature!");
+      return false;
     }
-    Serial.println("DEBUG MitsuACDbl: data sect. #2 signature match!");
+    DPRINTLN("DEBUG MitsuACDbl: data sect. #2 signature match!");
   }
   
   offset += used;  // Adjust for how much of the message we read.
@@ -1960,16 +1889,10 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
     // Checksum verification.
     unsigned char checksum = sumBytes(results->state + 5, kMitsubishiACDblStateLength - 5 - 1);
     if (checksum != results->state[kMitsubishiACDblStateLength - 1]) {
-      Serial.print("DEBUG MitsuACDbl: checksum fail! Calculated: ");
-      printHexByte(checksum);
-      Serial.print(", Received: ");
-      printHexByte(results->state[kMitsubishiACDblStateLength - 1]);
-      Serial.println();
+      DPRINTLN("DEBUG MitsuACDbl: checksum fail!");
       return false;
     } else {
-      Serial.print("DEBUG MitsuACDbl: checksum OK! (");
-      printHexByte(checksum);
-      Serial.println(")");
+      DPRINTLN("DEBUG MitsuACDbl: checksum OK!");
     }
   }
 
@@ -1999,23 +1922,6 @@ IRMitsubishiACDbl::IRMitsubishiACDbl(const uint16_t pin, const bool inverted,
                                      const bool use_modulation)
       : IRMitsubishiAC(pin, inverted, use_modulation) { }
 
-/*
-/// Reset the state of the remote to a known good state/sequence.
-void IRMitsubishiACDbl::stateReset(void) {
-  // The state of the IR remote in IR code form.
-  static const uint8_t kReset[kMitsubishiACStateLength] = {
-      0x23, 0xCB, 0x26, 0x01, 0x00, 0x20, 0x08, 0x06, 0x30, 0x45, 0x67};
-  setRaw(kReset);
-}
-
-/// Get a PTR to the internal state/code for this protocol.
-/// @return PTR to a code for this protocol based on the current internal state.
-uint8_t *IRMitsubishiACDbl::getRaw(void) {
-  checksum();
-  return _.raw;
-}
-*/
-
 #if SEND_MITSUBISHI_AC_DBL
 /// Send the current internal state as an IR message.
 /// @param[in] repeat Nr. of times the message will be repeated.
@@ -2023,19 +1929,5 @@ void IRMitsubishiACDbl::send(const uint16_t repeat) {
   _irsend.sendMitsubishiACDbl(getRaw(), kMitsubishiACDblStateLength, repeat);
 }
 
-/*
-/// Calculate and set the checksum values for the internal state.
-void IRMitsubishiACDbl::checksum(void) {
-  _.Sum = calculateChecksum(_.raw);
-}
-
-/// Calculate the checksum for a given state.
-/// @param[in] data The value to calc the checksum of.
-/// @return The calculated checksum value.
-uint8_t IRMitsubishiACDbl::calculateChecksum(const uint8_t *data) {
-  return sumBytes(data, kMitsubishiACStateLength - 1);
-}
-*/
-    
 #endif  // SEND_MITSUBISHI_AC_DBL
 
