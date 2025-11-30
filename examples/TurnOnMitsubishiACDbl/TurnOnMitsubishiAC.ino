@@ -60,6 +60,10 @@ void setup() {
   digitalWrite(blueled, LOW);
   pinMode(blueled, OUTPUT);
 
+  Serial.println();
+  Serial.print("IRremoteESP8266 lib version ");
+  Serial.println(_IRREMOTEESP8266_VERSION_STR);
+
   // Set up what we want to send. See ir_Mitsubishi.cpp for all the options.
   Serial.println("Default state of the remote.");
   printState();
