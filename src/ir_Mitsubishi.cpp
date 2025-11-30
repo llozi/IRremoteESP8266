@@ -1755,49 +1755,83 @@ unsigned char reverse(unsigned char b) {
    return b;
 }
 
+void printHexByte(byte bytetoprint) {
+  if (bytetoprint < 0x10) {
+    Serial.print(F("0"));
+  }                   
+  Serial.print(bytetoprint, HEX);
+} 
+    
 #if SEND_MITSUBISHI_AC_DBL
 /// Send a Mitsubishi 144-bit A/C formatted message preceeded by an additional
 /// signature sequence. (MITSUBISHI_AC_DBL)
 /// Status: ?.
 /// @param[in] data The message to be sent.
 /// @param[in] nbytes The number of bytes of message to be sent.
-/// @param[in] repeat The number of times the command is to be repeated.
+/// @param[in] repeat The number of times the command is to be repeated (not used).
 void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbytes,
                                  const uint16_t repeat) {
   //uint16_t nsignbytes = sizeof(signaturedata) / sizeof(signaturedata[0]);
 
- for (uint16_t r = 0; r <= repeat; r++) {
-    uint16_t pos = 0;
-    // Data Section #1
-    //   bits = 40; bytes = 5;
-    //   *(data + pos) = {0x23, 0xCB, 0x26, 0x01, 0x00};
-    sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
-                signaturedata, 5,  // Bytes
-                kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
-                kNoRepeat, kDutyDefault);
+  // need a copy of data to send as bits have to be reversed in every byte 
+//  uint8_t msbdata[kMitsubishiACStateLength];
 
-    // Data Section #2
-    //   bits = 144; bytes = 18;
-    sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
-                kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
-                data + pos, kMitsubishiACStateLength,  // Bytes
-                kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
-                kNoRepeat, kDutyDefault);
+  // Signature Section
+  //   bits = 40; bytes = 5;
+  //   *(sdata) = {0x23, 0xCB, 0x26, 0x01, 0x00};
+/*
+  // copy the signature bytes and reverse the bits in every byte
+  for (uint16_t i = 0; i < 5; i++) {
+    //msbdata[i] = reverse(signaturedata[i]);
+    msbdata[i] = signaturedata[i];
+  }
+*/
+/*
+  Serial.print("Sending signature sect.: ");
+  for (uint16_t i = 0; i < 5; i++) {
+    printHexByte(msbdata[i]);
+    if (i < 4) {
+      Serial.print(" ");
+    }
+  }
+  Serial.println();
+*/
+  sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
+              signaturedata, 5,  // Bytes
+              kMitsubishiAcDblFreq, false, //kMitsubishiAcDblMsbFirst,
+              kNoRepeat, kDutyDefault);
+
+  // Data Section
+  //   bits = 144; bytes = 18;
+/*
+  // reverse all bytes
+  for (uint16_t i = 0; i < kMitsubishiACStateLength; i++) {
+    //msbdata[i] = reverse(data[i]);
+    msbdata[i] = data[i];
+  }
+*/
+/*
+  Serial.print("Sending data sect.: ");
+  for (uint16_t i = 0; i < kMitsubishiACStateLength; i++) {
+    printHexByte(msbdata[i]);
+    if (i < kMitsubishiACStateLength - 1) {
+      Serial.print(" ");
+    } 
   } 
+  Serial.println();
+*/
+  sendGeneric(kMitsubishiAcDblHdrMark, kMitsubishiAcDblHdrSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
+              kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
+              data, kMitsubishiACStateLength,  // Bytes
+              kMitsubishiAcDblFreq, false, //kMitsubishiAcDblMsbFirst,
+              kNoRepeat, kDutyDefault);
 }
 #endif  // SEND_MITSUBISHI_AC_DBL
-
-void printHexByte(byte bytetoprint) {
-  if (bytetoprint < 0x10) {
-    Serial.print(F("0"));
-  }
-  Serial.print(bytetoprint, HEX);
-}
 
 #if DECODE_MITSUBISHI_AC_DBL
 /// Decode the supplied Mitsubish 144-bit A/C message which is preceeded by an
@@ -1903,7 +1937,7 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
   Serial.print("DEBUG MitsuACDbl data bytes: ");
   for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
     printHexByte(results->state[i]);
-    if (i < kMitsubishiACDblStateLength - 1) {
+    if (i < kMitsubishiACStateLength - 1) {
       Serial.print(" ");
     } 
   }
