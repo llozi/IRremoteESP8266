@@ -1748,20 +1748,6 @@ String IRMitsubishi112::toString(void) const {
   return result;
 }
 
-unsigned char reverse(unsigned char b) {
-   b = (b & 0b11110000) >> 4 | (b & 0b00001111) << 4;
-   b = (b & 0b11001100) >> 2 | (b & 0b00110011) << 2;
-   b = (b & 0b10101010) >> 1 | (b & 0b01010101) << 1;
-   return b;
-}
-
-void printHexByte(byte bytetoprint) {
-  if (bytetoprint < 0x10) {
-    Serial.print(F("0"));
-  }                   
-  Serial.print(bytetoprint, HEX);
-} 
-    
 #if SEND_MITSUBISHI_AC_DBL
 /// Send a Mitsubishi 144-bit A/C formatted message preceeded by an additional
 /// signature sequence. (MITSUBISHI_AC_DBL)
@@ -1777,7 +1763,7 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
               kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
               signaturedata, 5,  // Bytes
-              kMitsubishiAcDblFreq, false, //kMitsubishiAcDblMsbFirst,
+              kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
               kNoRepeat, kDutyDefault);
 
   // Data Section
@@ -1787,7 +1773,7 @@ void IRsend::sendMitsubishiACDbl(const unsigned char data[], const uint16_t nbyt
               kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
               kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
               data, kMitsubishiACStateLength,  // Bytes
-              kMitsubishiAcDblFreq, false, //kMitsubishiAcDblMsbFirst,
+              kMitsubishiAcDblFreq, kMitsubishiAcDblMsbFirst,
               kNoRepeat, kDutyDefault);
 }
 #endif  // SEND_MITSUBISHI_AC_DBL
@@ -1827,16 +1813,14 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblSpaceGap,
-                      false);
+                      false,  // At least
+                      _tolerance + kMitsubishiAcExtraTolerance,
+                      0, kMitsubishiAcDblMsbFirst);
   if (used == 0) {
     DPRINTLN("DEBUG MitsuACDbl: no data!");
     return false;  // We failed to find any data.
   }
   DPRINTLN("DEBUG MitsuACDbl: generic match data sect. 1!");
-
-  for (uint16_t i = 0; i < 5; i++) {
-    results->state[i] = reverse(results->state[i]);
-  }
 
   // Compliance
   if (strict) {
@@ -1861,17 +1845,15 @@ bool IRrecv::decodeMitsubishiACDbl(decode_results *results, uint16_t offset,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblOneSpace,
                       kMitsubishiAcDblBitMark, kMitsubishiAcDblZeroSpace,
                       kMitsubishiAcDblBitMark, kDefaultMessageGap,
-                      false);
+                      false,  // At least
+                      _tolerance + kMitsubishiAcExtraTolerance,
+                      0, kMitsubishiAcDblMsbFirst);
   if (used == 0) {
     DPRINTLN("DEBUG MitsuACDbl: no data in sect #2!");
     return false;  // We failed to find any data.
   }
 
   DPRINTLN("DEBUG MitsuACDbl: generic match data sect. 2!");
-
-  for (uint16_t i = 5; i < kMitsubishiACDblStateLength; i++) {
-    results->state[i] = reverse(results->state[i]);
-  } 
 
   if (strict) {
     // Data signature check for the second section.
