@@ -4385,7 +4385,7 @@ String resultAcToString(const decode_results * const result) {
 #endif  // DECODE_MITSUBISHI_AC
 #if DECODE_MITSUBISHI_AC_DBL
     case decode_type_t::MITSUBISHI_AC_DBL: {
-      IRMitsubishiAC ac(kGpioUnused);
+      IRMitsubishiACDbl ac(kGpioUnused);
       ac.setRaw(result->state);
       return ac.toString();
     }   
@@ -4910,6 +4910,14 @@ bool decodeToState(const decode_results *decode, stdAc::state_t *result,
       break;
     }
 #endif  // DECODE_MITSUBISHI_AC
+#if DECODE_MITSUBISHI_AC_DBL
+    case decode_type_t::MITSUBISHI_AC_DBL: {      
+      IRMitsubishiACDbl ac(kGpioUnused);
+      ac.setRaw(decode->state);
+      *result = ac.toCommon();
+      break;
+    }   
+#endif  // DECODE_MITSUBISHI_AC_DBL
 #if DECODE_MITSUBISHI112
     case decode_type_t::MITSUBISHI112: {
       IRMitsubishi112 ac(kGpioUnused);
